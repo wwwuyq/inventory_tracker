@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f2eb" />
+    <title>Lili Ops</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Private operations</p>
+          <h1>Lili Design Studio</h1>
+        </div>
+        <button class="icon-button" id="exportData" title="Export database" aria-label="Export database">
+          <span aria-hidden="true">↓</span>
+        </button>
+      </header>
+
+      <main>
+        <section class="view active" id="dashboardView" aria-labelledby="dashboardTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Today</p>
+              <h2 id="dashboardTitle">Operations dashboard</h2>
+            </div>
+            <button class="secondary-button" data-action="seed">Load sample</button>
+          </div>
+
+          <div class="metric-grid" id="metricGrid"></div>
+
+          <div class="panel">
+            <div class="panel-title">
+              <h3>Needs attention</h3>
+              <span id="attentionCount">0</span>
+            </div>
+            <div class="stack" id="attentionList"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">
+              <h3>Open inventory</h3>
+              <span id="stockCount">0 SKUs</span>
+            </div>
+            <div class="inventory-list" id="inventoryList"></div>
+          </div>
+        </section>
+
+        <section class="view" id="importView" aria-labelledby="importTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">OCR intake</p>
+              <h2 id="importTitle">Read documents</h2>
+            </div>
+          </div>
+
+          <form class="panel form" id="importForm">
+            <label>
+              Upload PDF, photo, or text file
+              <input type="file" id="documentFiles" multiple accept=".pdf,.txt,.csv,image/*" />
+            </label>
+            <label>
+              Paste text from email, PDF, WeChat, invoice, or Chinese label
+              <textarea id="rawText" rows="8" placeholder="Example: PO 1048, SKU DRESS-01, 120 pcs, tracking 1Z999..., ship date 2026-06-01"></textarea>
+            </label>
+            <div class="button-row">
+              <button type="submit">Extract fields</button>
+              <button type="button" class="secondary-button" data-action="clear-import">Clear</button>
+            </div>
+          </form>
+
+          <form class="panel form hidden" id="reviewForm">
+            <div class="panel-title">
+              <h3>Review before saving</h3>
+              <span>AI/OCR draft</span>
+            </div>
+            <div class="field-grid">
+              <label>Record type
+                <select id="extractType">
+                  <option value="manufacturing">Manufacturing order</option>
+                  <option value="shipping">Shipping</option>
+                  <option value="purchase">Purchase order</option>
+                  <option value="inventory">Inventory receiving</option>
+                </select>
+              </label>
+              <label>Product / SKU <input id="extractSku" /></label>
+              <label>Quantity <input id="extractQty" type="number" min="0" /></label>
+              <label>Unit price <input id="extractPrice" type="number" min="0" step="0.01" /></label>
+              <label>PO / invoice <input id="extractReference" /></label>
+              <label>Tracking number <input id="extractTracking" /></label>
+              <label>Date <input id="extractDate" type="date" /></label>
+              <label>Manufacturer / customer <input id="extractPartner" /></label>
+            </div>
+            <label>Notes
+              <textarea id="extractNotes" rows="4"></textarea>
+            </label>
+            <div class="button-row">
+              <button type="submit">Save reviewed record</button>
+              <button type="button" class="secondary-button" data-action="discard-review">Discard</button>
+            </div>
+          </form>
+
+          <div class="panel">
+            <div class="panel-title">
+              <h3>Document log</h3>
+              <span id="documentCount">0</span>
+            </div>
+            <div class="stack" id="documentList"></div>
+          </div>
+        </section>
+
+        <section class="view" id="setupView" aria-labelledby="setupTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Database setup</p>
+              <h2 id="setupTitle">Stores, products, factories</h2>
+            </div>
+          </div>
+
+          <form class="panel form" id="storeForm">
+            <div class="panel-title">
+              <h3>New retail store</h3>
+              <span>Customer master</span>
+            </div>
+            <div class="field-grid">
+              <label>Store name <input id="storeName" required placeholder="Retail store name" /></label>
+              <label>Buyer / contact <input id="storeContact" /></label>
+              <label>Email <input id="storeEmail" type="email" /></label>
+              <label>Phone <input id="storePhone" /></label>
+            </div>
+            <label>Shipping address <textarea id="storeAddress" rows="3"></textarea></label>
+            <button type="submit">Add retail store</button>
+          </form>
+
+          <form class="panel form" id="manufacturerForm">
+            <div class="panel-title">
+              <h3>New manufacturer</h3>
+              <span>Factory master</span>
+            </div>
+            <div class="field-grid">
+              <label>Manufacturer name <input id="manufacturerName" required placeholder="Factory name" /></label>
+              <label>Contact <input id="manufacturerContact" /></label>
+              <label>Email <input id="manufacturerEmail" type="email" /></label>
+              <label>Phone / WeChat <input id="manufacturerPhone" /></label>
+            </div>
+            <label>Notes <textarea id="manufacturerNotes" rows="3"></textarea></label>
+            <button type="submit">Add manufacturer</button>
+          </form>
+
+          <form class="panel form" id="productForm">
+            <div class="panel-title">
+              <h3>New product</h3>
+              <span>SKU master</span>
+            </div>
+            <div class="field-grid">
+              <label>SKU <input id="productSku" required placeholder="LILI-DRESS-01" /></label>
+              <label>Product name <input id="productName" /></label>
+              <label>Category <input id="productCategory" /></label>
+              <label>Default manufacturer
+                <select id="productManufacturer"></select>
+              </label>
+              <label>Retail store
+                <select id="productStore"></select>
+              </label>
+              <label>Default wholesale price <input id="productWholesale" type="number" min="0" step="0.01" /></label>
+            </div>
+            <label>Notes <textarea id="productNotes" rows="3"></textarea></label>
+            <button type="submit">Add product</button>
+          </form>
+
+          <div class="records" id="setupRecords"></div>
+        </section>
+
+        <section class="view" id="factoryView" aria-labelledby="factoryTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Manufacture</p>
+              <h2 id="factoryTitle">Factory orders</h2>
+            </div>
+          </div>
+          <form class="panel form" id="factoryForm">
+            <div class="field-grid">
+              <label>Manufacturer <input id="factoryName" list="manufacturerNameList" required placeholder="Factory name" /></label>
+              <label>Product / SKU <input id="factorySku" list="productSkuList" required placeholder="SKU or style" /></label>
+              <label>Ordered pieces <input id="factoryQty" type="number" min="0" required /></label>
+              <label>Unit price <input id="factoryPrice" type="number" min="0" step="0.01" /></label>
+              <label>Paid amount <input id="factoryPaid" type="number" min="0" step="0.01" /></label>
+              <label>Produced pieces <input id="factoryProduced" type="number" min="0" /></label>
+              <label>Shipped pieces <input id="factoryShipped" type="number" min="0" /></label>
+              <label>Due date <input id="factoryDue" type="date" /></label>
+            </div>
+            <label>Notes <textarea id="factoryNotes" rows="3"></textarea></label>
+            <button type="submit">Add factory order</button>
+          </form>
+          <div class="records" id="factoryRecords"></div>
+        </section>
+
+        <section class="view" id="shippingView" aria-labelledby="shippingTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Shipping</p>
+              <h2 id="shippingTitle">Inbound shipments</h2>
+            </div>
+          </div>
+          <form class="panel form" id="shippingForm">
+            <div class="field-grid">
+              <label>Product / SKU <input id="shipSku" list="productSkuList" required /></label>
+              <label>Pieces shipped <input id="shipQty" type="number" min="0" required /></label>
+              <label>Tracking number <input id="shipTracking" /></label>
+              <label>Carrier <input id="shipCarrier" placeholder="UPS, FedEx, DHL..." /></label>
+              <label>Ship date <input id="shipDate" type="date" /></label>
+              <label>Estimated arrival <input id="shipEta" type="date" /></label>
+            </div>
+            <label>Notes <textarea id="shipNotes" rows="3"></textarea></label>
+            <button type="submit">Add shipment</button>
+          </form>
+          <div class="records" id="shippingRecords"></div>
+        </section>
+
+        <section class="view" id="storageView" aria-labelledby="storageTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Storage</p>
+              <h2 id="storageTitle">Inventory receiving</h2>
+            </div>
+          </div>
+          <form class="panel form" id="inventoryForm">
+            <div class="field-grid">
+              <label>Product / SKU <input id="invSku" list="productSkuList" required /></label>
+              <label>Received pieces <input id="invReceived" type="number" min="0" required /></label>
+              <label>Sent out pieces <input id="invSent" type="number" min="0" /></label>
+              <label>Reserved pieces <input id="invReserved" type="number" min="0" /></label>
+              <label>Location <input id="invLocation" placeholder="Storage, shelf, bin" /></label>
+              <label>Date <input id="invDate" type="date" /></label>
+            </div>
+            <label>Notes <textarea id="invNotes" rows="3"></textarea></label>
+            <button type="submit">Add inventory movement</button>
+          </form>
+          <div class="records" id="inventoryRecords"></div>
+        </section>
+
+        <section class="view" id="poView" aria-labelledby="poTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Retail</p>
+              <h2 id="poTitle">Purchase orders</h2>
+            </div>
+          </div>
+          <form class="panel form" id="poForm">
+            <div class="field-grid">
+              <label>Customer / retailer <input id="poCustomer" list="storeNameList" required /></label>
+              <label>PO number <input id="poNumber" required /></label>
+              <label>Product / SKU <input id="poSku" list="productSkuList" required /></label>
+              <label>Pieces ordered <input id="poQty" type="number" min="0" required /></label>
+              <label>Pieces sent <input id="poSent" type="number" min="0" /></label>
+              <label>Invoice amount <input id="poInvoiceAmount" type="number" min="0" step="0.01" /></label>
+              <label>Status
+                <select id="poInvoiceStatus">
+                  <option value="not_sent">Invoice not sent</option>
+                  <option value="sent">Invoice sent</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </label>
+              <label>Due date <input id="poDue" type="date" /></label>
+            </div>
+            <label>Notes <textarea id="poNotes" rows="3"></textarea></label>
+            <button type="submit">Add purchase order</button>
+          </form>
+          <div class="records" id="poRecords"></div>
+        </section>
+      </main>
+
+      <nav class="tabbar" aria-label="Main navigation">
+        <button class="tab active" data-view="dashboardView"><span>Home</span></button>
+        <button class="tab" data-view="importView"><span>Import</span></button>
+        <button class="tab" data-view="setupView"><span>Setup</span></button>
+        <button class="tab" data-view="factoryView"><span>Factory</span></button>
+        <button class="tab" data-view="shippingView"><span>Ship</span></button>
+        <button class="tab" data-view="storageView"><span>Stock</span></button>
+        <button class="tab" data-view="poView"><span>PO</span></button>
+      </nav>
+    </div>
+
+    <datalist id="productSkuList"></datalist>
+    <datalist id="storeNameList"></datalist>
+    <datalist id="manufacturerNameList"></datalist>
+
+    <template id="recordTemplate">
+      <article class="record-card">
+        <div class="record-main">
+          <h3></h3>
+          <p></p>
+        </div>
+        <div class="record-meta"></div>
+      </article>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
