@@ -392,6 +392,32 @@ select:focus {
   display: none;
 }
 
+.toast {
+  position: fixed;
+  right: 14px;
+  bottom: 86px;
+  left: 14px;
+  z-index: 10;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 13px 15px;
+  border-radius: 8px;
+  background: var(--sage-dark);
+  color: #fff;
+  box-shadow: var(--shadow);
+  font-weight: 760;
+  text-align: center;
+  transform: translateY(18px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .tabbar {
   position: fixed;
   right: 0;

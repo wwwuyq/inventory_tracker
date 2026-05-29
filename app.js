@@ -18,6 +18,7 @@ const state = loadDatabase();
 let supabaseClient = null;
 let currentUser = null;
 let isRemoteReady = false;
+let toastTimer = null;
 
 const $ = (id) => document.getElementById(id);
 const money = (value) => Number(value || 0).toLocaleString(undefined, {
@@ -39,6 +40,18 @@ function saveDatabase() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   renderAll();
   saveRemoteDatabase();
+}
+
+function removeLoadedSamples() {
+  const before = JSON.stringify(state);
+  state.manufacturers = state.manufacturers.filter((item) => item.name !== "Hangzhou Sample Factory");
+  state.retailStores = state.retailStores.filter((item) => item.name !== "Retail Buyer A");
+  state.products = state.products.filter((item) => !["LILI-DRESS-01", "LILI-TOP-02"].includes(item.sku));
+  state.factoryOrders = state.factoryOrders.filter((item) => item.sku !== "LILI-DRESS-01" && item.manufacturer !== "Hangzhou Sample Factory");
+  state.shipments = state.shipments.filter((item) => item.sku !== "LILI-DRESS-01" && item.tracking !== "1Z999AA10123456784");
+  state.inventory = state.inventory.filter((item) => item.sku !== "LILI-TOP-02");
+  state.purchaseOrders = state.purchaseOrders.filter((item) => item.poNumber !== "PO-1048" && item.customer !== "Retail Buyer A");
+  return before !== JSON.stringify(state);
 }
 
 async function saveRemoteDatabase() {
@@ -70,9 +83,11 @@ async function loadRemoteDatabase() {
   if (data?.data) {
     Object.assign(state, { ...emptyDatabase, ...data.data });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } else {
-    await saveRemoteDatabase();
   }
+  if (removeLoadedSamples()) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+  await saveRemoteDatabase();
   renderAll();
 }
 
@@ -421,6 +436,16 @@ function escapeHtml(value) {
   }[char]));
 }
 
+function showToast(message) {
+  const toast = $("toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2400);
+}
+
 function extractFields(text) {
   const compact = text.replace(/\s+/g, " ").trim();
   const sku = match(compact, /\b(?:SKU|STYLE|ITEM|货号|款号)[:\s#-]*([A-Z0-9][A-Z0-9._-]{2,})/i);
@@ -581,6 +606,7 @@ async function addRetailStore(event) {
   });
   resetForm(event.target);
   saveDatabase();
+  showToast("Retail store added successfully.");
 }
 
 async function addManufacturer(event) {
@@ -603,6 +629,7 @@ async function addManufacturer(event) {
   });
   resetForm(event.target);
   saveDatabase();
+  showToast("Manufacturer added successfully.");
 }
 
 async function addProduct(event) {
@@ -629,6 +656,7 @@ async function addProduct(event) {
   });
   resetForm(event.target);
   saveDatabase();
+  showToast("Product added successfully.");
 }
 
 function addFactory(event) {
@@ -716,109 +744,6 @@ function addPurchaseOrder(event) {
   saveDatabase();
 }
 
-function seedData() {
-  if (state.factoryOrders.length || state.shipments.length || state.inventory.length || state.purchaseOrders.length) return;
-  const manufacturerId = uid("mfg");
-  const storeId = uid("store");
-  const dressId = uid("product");
-  const topId = uid("product");
-  state.manufacturers.push({
-    id: manufacturerId,
-    name: "Hangzhou Sample Factory",
-    contact: "Ms. Chen",
-    email: "",
-    phone: "WeChat sample",
-    notes: "Makes dresses and woven tops.",
-    createdAt: today()
-  });
-  state.retailStores.push({
-    id: storeId,
-    name: "Retail Buyer A",
-    contact: "Buyer",
-    email: "",
-    phone: "",
-    address: "Sample retail account",
-    createdAt: today()
-  });
-  state.products.push({
-    id: dressId,
-    sku: "LILI-DRESS-01",
-    name: "Sample Dress",
-    category: "Dress",
-    manufacturerId,
-    retailStoreId: "",
-    wholesalePrice: 42,
-    notes: "",
-    createdAt: today()
-  }, {
-    id: topId,
-    sku: "LILI-TOP-02",
-    name: "Sample Top",
-    category: "Top",
-    manufacturerId,
-    retailStoreId: storeId,
-    wholesalePrice: 40,
-    notes: "",
-    createdAt: today()
-  });
-  state.factoryOrders.push({
-    id: uid("factory"),
-    manufacturerId,
-    productId: dressId,
-    manufacturer: "Hangzhou Sample Factory",
-    sku: "LILI-DRESS-01",
-    quantity: 240,
-    unitPrice: 18.5,
-    paid: 2200,
-    produced: 180,
-    shipped: 120,
-    dueDate: "2026-06-12",
-    notes: "Waiting on final 60 pcs trim confirmation.",
-    createdAt: today()
-  });
-  state.shipments.push({
-    id: uid("ship"),
-    productId: dressId,
-    sku: "LILI-DRESS-01",
-    quantity: 120,
-    tracking: "1Z999AA10123456784",
-    carrier: "UPS",
-    shipDate: "2026-05-25",
-    eta: "2026-06-03",
-    notes: "6 cartons from factory.",
-    received: false,
-    createdAt: today()
-  });
-  state.inventory.push({
-    id: uid("inv"),
-    productId: topId,
-    sku: "LILI-TOP-02",
-    received: 90,
-    sent: 30,
-    reserved: 20,
-    location: "Storage A",
-    date: "2026-05-20",
-    notes: "",
-    createdAt: today()
-  });
-  state.purchaseOrders.push({
-    id: uid("po"),
-    retailStoreId: storeId,
-    productId: topId,
-    customer: "Retail Buyer A",
-    poNumber: "PO-1048",
-    sku: "LILI-TOP-02",
-    quantity: 80,
-    sent: 30,
-    invoiceAmount: 3200,
-    invoiceStatus: "sent",
-    dueDate: "2026-06-08",
-    notes: "Ship remaining after next receiving.",
-    createdAt: today()
-  });
-  saveDatabase();
-}
-
 function exportData() {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -860,9 +785,11 @@ function wireEvents() {
   $("exportData").addEventListener("click", exportData);
   $("loginForm").addEventListener("submit", signIn);
   $("signOutButton").addEventListener("click", signOut);
+  $("storeForm").addEventListener("submit", addRetailStore);
+  $("manufacturerForm").addEventListener("submit", addManufacturer);
+  $("productForm").addEventListener("submit", addProduct);
   $("factorySku").addEventListener("change", () => fillDefaultsFromProduct(textFrom("factorySku"), { manufacturer: "factoryName" }));
   $("poSku").addEventListener("change", () => fillDefaultsFromProduct(textFrom("poSku"), { store: "poCustomer", price: "poInvoiceAmount" }));
-  document.querySelector("[data-action='seed']").addEventListener("click", seedData);
   document.querySelector("[data-action='clear-import']").addEventListener("click", () => resetForm($("importForm")));
   document.querySelector("[data-action='discard-review']").addEventListener("click", () => {
     $("reviewForm").classList.add("hidden");
@@ -872,6 +799,3 @@ function wireEvents() {
 
 wireEvents();
 initializeSupabase();
-  $("storeForm").addEventListener("submit", addRetailStore);
-  $("manufacturerForm").addEventListener("submit", addManufacturer);
-  $("productForm").addEventListener("submit", addProduct);
