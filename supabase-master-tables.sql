@@ -6,8 +6,13 @@ create table if not exists retail_stores (
   phone text,
   shipping_address text,
   notes text,
+  monthly_sales_reminder boolean not null default true,
+  sales_data_note text,
   created_at timestamptz not null default now()
 );
+
+alter table retail_stores add column if not exists monthly_sales_reminder boolean not null default true;
+alter table retail_stores add column if not exists sales_data_note text;
 
 create table if not exists manufacturers (
   id uuid primary key default gen_random_uuid(),

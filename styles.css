@@ -304,6 +304,7 @@ select:focus {
 }
 
 .record-card,
+.invoice-card,
 .inventory-row,
 .attention-item {
   border: 1px solid var(--line);
@@ -315,6 +316,18 @@ select:focus {
   display: grid;
   gap: 12px;
   padding: 14px;
+}
+
+.invoice-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.invoice-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .record-main p,
@@ -425,7 +438,7 @@ select:focus {
   left: 0;
   z-index: 5;
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 4px;
   max-width: 1120px;
   margin: 0 auto;
@@ -442,7 +455,7 @@ select:focus {
   background: transparent;
   color: var(--muted);
   border-radius: 8px;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
 }
 
 .tab.active {
@@ -469,6 +482,11 @@ select:focus {
 
   .record-card {
     align-content: start;
+  }
+
+  .invoice-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: end;
   }
 }
 

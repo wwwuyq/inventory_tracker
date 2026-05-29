@@ -18,6 +18,8 @@ create table retail_stores (
   phone text,
   shipping_address text,
   notes text,
+  monthly_sales_reminder boolean not null default true,
+  sales_data_note text,
   created_at timestamptz not null default now()
 );
 
@@ -106,6 +108,7 @@ create table retail_purchase_orders (
   po_number text not null,
   invoice_status text not null default 'not_sent',
   invoice_amount numeric(12, 2) not null default 0,
+  invoiced_at timestamptz,
   due_date date,
   shopify_order_id text,
   notes text,

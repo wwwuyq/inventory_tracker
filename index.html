@@ -141,8 +141,15 @@
               <label>Buyer / contact <input id="storeContact" /></label>
               <label>Email <input id="storeEmail" type="email" /></label>
               <label>Phone <input id="storePhone" /></label>
+              <label>Monthly sale data
+                <select id="storeSalesReminder">
+                  <option value="yes">Remind on first day</option>
+                  <option value="no">No monthly reminder</option>
+                </select>
+              </label>
             </div>
             <label>Shipping address <textarea id="storeAddress" rows="3"></textarea></label>
+            <label>Sale data note <textarea id="storeSalesNote" rows="3" placeholder="Example: Ask buyer to send last month's sales by SKU."></textarea></label>
             <button type="submit">Add retail store</button>
           </form>
 
@@ -275,12 +282,29 @@
                   <option value="paid">Paid</option>
                 </select>
               </label>
+              <label>Invoiced time <input id="poInvoicedAt" type="datetime-local" /></label>
               <label>Due date <input id="poDue" type="date" /></label>
             </div>
             <label>Notes <textarea id="poNotes" rows="3"></textarea></label>
             <button type="submit">Add purchase order</button>
           </form>
           <div class="records" id="poRecords"></div>
+        </section>
+
+        <section class="view" id="invoiceView" aria-labelledby="invoiceTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Invoices</p>
+              <h2 id="invoiceTitle">PO invoice check</h2>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">
+              <h3>Invoice status</h3>
+              <span id="invoiceCount">0 POs</span>
+            </div>
+            <div class="stack" id="invoiceRecords"></div>
+          </div>
         </section>
       </main>
 
@@ -292,6 +316,7 @@
         <button class="tab" data-view="shippingView"><span>Ship</span></button>
         <button class="tab" data-view="storageView"><span>Stock</span></button>
         <button class="tab" data-view="poView"><span>PO</span></button>
+        <button class="tab" data-view="invoiceView"><span>Invoice</span></button>
       </nav>
     </div>
 

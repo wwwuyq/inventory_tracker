@@ -27,6 +27,11 @@ const money = (value) => Number(value || 0).toLocaleString(undefined, {
 });
 const qty = (value) => Number(value || 0).toLocaleString();
 const today = () => new Date().toISOString().slice(0, 10);
+const nowLocalInput = () => {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+};
 
 function loadDatabase() {
   try {
@@ -165,6 +170,10 @@ function purchaseRemaining(order) {
   return Number(order.quantity || 0) - Number(order.sent || 0);
 }
 
+function isFirstDayOfMonth() {
+  return new Date().getDate() === 1;
+}
+
 function renderMetrics() {
   const owed = state.factoryOrders.reduce((sum, order) => sum + Math.max(0, factoryBalance(order)), 0);
   const openFactoryPieces = state.factoryOrders.reduce((sum, order) => {
@@ -222,6 +231,17 @@ function renderAttention() {
     });
   });
 
+  if (isFirstDayOfMonth()) {
+    state.retailStores
+      .filter((store) => store.monthlySalesReminder !== false)
+      .forEach((store) => {
+        items.push({
+          title: `Check monthly sale data: ${store.name}`,
+          body: store.salesDataNote || "Ask this retailer to send last month's sale data."
+        });
+      });
+  }
+
   $("attentionCount").textContent = items.length;
   $("attentionList").innerHTML = items.length ? items.slice(0, 8).map((item) => `
     <article class="attention-item">
@@ -278,10 +298,11 @@ function renderSetupRecords() {
 
   const storeCards = state.retailStores.map((store) => recordCard(
     `Store · ${store.name}`,
-    store.address || store.email || "No address",
+    store.salesDataNote || store.address || store.email || "No address",
     [
       { text: store.contact || "No contact", color: "blue" },
-      { text: store.phone || "No phone", color: "gold" }
+      { text: store.phone || "No phone", color: "gold" },
+      { text: store.monthlySalesReminder === false ? "No sales reminder" : "Monthly sales reminder", color: store.monthlySalesReminder === false ? "" : "green" }
     ]
   ));
 
@@ -350,9 +371,35 @@ function renderRecords() {
       { text: `${qty(order.quantity)} ordered`, color: "blue" },
       { text: `${qty(order.sent)} sent`, color: "green" },
       { text: `${qty(purchaseRemaining(order))} remaining`, color: purchaseRemaining(order) > 0 ? "red" : "green" },
-      { text: order.invoiceStatus.replace("_", " "), color: order.invoiceStatus === "paid" ? "green" : "gold" }
+      { text: order.invoiceStatus.replace("_", " "), color: order.invoiceStatus === "paid" ? "green" : "gold" },
+      { text: order.invoicedAt ? `Invoiced ${formatDateTime(order.invoicedAt)}` : "Not invoiced", color: order.invoicedAt ? "green" : "red" }
     ]
   )).join("");
+}
+
+function renderInvoiceRecords() {
+  $("invoiceCount").textContent = `${state.purchaseOrders.length} POs`;
+  $("invoiceRecords").innerHTML = state.purchaseOrders.length ? state.purchaseOrders.map((order) => `
+    <article class="invoice-card" data-po-id="${escapeHtml(order.id)}">
+      <div class="record-main">
+        <h3>${escapeHtml(order.customer)} · PO ${escapeHtml(order.poNumber)}</h3>
+        <p>${escapeHtml(order.sku)} · ${qty(order.quantity)} ordered · ${money(order.invoiceAmount)} · ${order.invoicedAt ? `Invoiced ${formatDateTime(order.invoicedAt)}` : "Invoice not sent"}</p>
+      </div>
+      <div class="invoice-controls">
+        <label>Status
+          <select data-invoice-field="status">
+            <option value="not_sent" ${order.invoiceStatus === "not_sent" ? "selected" : ""}>Invoice not sent</option>
+            <option value="sent" ${order.invoiceStatus === "sent" ? "selected" : ""}>Invoice sent</option>
+            <option value="paid" ${order.invoiceStatus === "paid" ? "selected" : ""}>Paid</option>
+          </select>
+        </label>
+        <label>Invoiced time
+          <input data-invoice-field="invoicedAt" type="datetime-local" value="${escapeHtml(order.invoicedAt || "")}" />
+        </label>
+        <button type="button" data-action="save-invoice">Save</button>
+      </div>
+    </article>
+  `).join("") : `<p class="muted">No purchase orders yet.</p>`;
 }
 
 function renderDocuments() {
@@ -377,6 +424,7 @@ function renderAll() {
   renderAttention();
   renderInventorySummary();
   renderRecords();
+  renderInvoiceRecords();
   renderDocuments();
 }
 
@@ -444,6 +492,19 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     toast.classList.remove("show");
   }, 2400);
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
 
 function extractFields(text) {
@@ -565,6 +626,7 @@ function saveReviewedRecord(event) {
       sent: 0,
       invoiceAmount: numberFrom("extractPrice") * numberFrom("extractQty"),
       invoiceStatus: "not_sent",
+      invoicedAt: "",
       dueDate: textFrom("extractDate")
     });
   }
@@ -593,7 +655,10 @@ async function addRetailStore(event) {
     contact_name: textFrom("storeContact"),
     email: textFrom("storeEmail"),
     phone: textFrom("storePhone"),
-    shipping_address: textFrom("storeAddress")
+    shipping_address: textFrom("storeAddress"),
+    notes: textFrom("storeSalesNote"),
+    monthly_sales_reminder: $("storeSalesReminder").value === "yes",
+    sales_data_note: textFrom("storeSalesNote")
   });
   state.retailStores.unshift({
     id: remote?.id || uid("store"),
@@ -602,6 +667,8 @@ async function addRetailStore(event) {
     email: textFrom("storeEmail"),
     phone: textFrom("storePhone"),
     address: textFrom("storeAddress"),
+    monthlySalesReminder: $("storeSalesReminder").value === "yes",
+    salesDataNote: textFrom("storeSalesNote"),
     createdAt: today()
   });
   resetForm(event.target);
@@ -725,6 +792,7 @@ function addPurchaseOrder(event) {
   event.preventDefault();
   const store = findByName(state.retailStores, textFrom("poCustomer"));
   const product = findProductBySku(textFrom("poSku"));
+  const invoiceStatus = $("poInvoiceStatus").value;
   state.purchaseOrders.unshift({
     id: uid("po"),
     retailStoreId: store?.id || "",
@@ -735,13 +803,29 @@ function addPurchaseOrder(event) {
     quantity: numberFrom("poQty"),
     sent: numberFrom("poSent"),
     invoiceAmount: numberFrom("poInvoiceAmount"),
-    invoiceStatus: $("poInvoiceStatus").value,
+    invoiceStatus,
+    invoicedAt: textFrom("poInvoicedAt") || (invoiceStatus === "not_sent" ? "" : nowLocalInput()),
     dueDate: textFrom("poDue"),
     notes: textFrom("poNotes"),
     createdAt: today()
   });
   resetForm(event.target);
   saveDatabase();
+}
+
+function updateInvoiceStatus(event) {
+  const button = event.target.closest("[data-action='save-invoice']");
+  if (!button) return;
+  const card = button.closest("[data-po-id]");
+  const order = state.purchaseOrders.find((item) => item.id === card.dataset.poId);
+  if (!order) return;
+
+  const status = card.querySelector("[data-invoice-field='status']").value;
+  const invoicedAtInput = card.querySelector("[data-invoice-field='invoicedAt']");
+  order.invoiceStatus = status;
+  order.invoicedAt = status === "not_sent" ? "" : (invoicedAtInput.value || nowLocalInput());
+  saveDatabase();
+  showToast("Invoice status updated successfully.");
 }
 
 function exportData() {
@@ -788,6 +872,7 @@ function wireEvents() {
   $("storeForm").addEventListener("submit", addRetailStore);
   $("manufacturerForm").addEventListener("submit", addManufacturer);
   $("productForm").addEventListener("submit", addProduct);
+  $("invoiceRecords").addEventListener("click", updateInvoiceStatus);
   $("factorySku").addEventListener("change", () => fillDefaultsFromProduct(textFrom("factorySku"), { manufacturer: "factoryName" }));
   $("poSku").addEventListener("change", () => fillDefaultsFromProduct(textFrom("poSku"), { store: "poCustomer", price: "poInvoiceAmount" }));
   document.querySelector("[data-action='clear-import']").addEventListener("click", () => resetForm($("importForm")));

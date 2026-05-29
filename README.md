@@ -17,6 +17,8 @@ Open `index.html` in a browser. The MVP stores records in browser `localStorage`
 - Shipment tracking: SKU, quantity, carrier, tracking number, ship date, ETA.
 - Storage tracking: received, sent, reserved, available quantity by SKU.
 - Retail PO tracking: customer, PO number, ordered, sent, remaining, invoice status.
+- Invoice tab for checking whether each PO has been invoiced and when.
+- Retail store setup includes a monthly sale-data reminder note for first-day-of-month follow-up.
 - Document intake for pasted text and text files, with field extraction for SKU, quantity, price, PO/invoice, tracking, date, and partner.
 - PDF/image uploads are logged as documents that need OCR. Production OCR should run server-side.
 
