@@ -656,9 +656,7 @@ async function addRetailStore(event) {
     email: textFrom("storeEmail"),
     phone: textFrom("storePhone"),
     shipping_address: textFrom("storeAddress"),
-    notes: textFrom("storeSalesNote"),
-    monthly_sales_reminder: $("storeSalesReminder").value === "yes",
-    sales_data_note: textFrom("storeSalesNote")
+    notes: textFrom("storeSalesNote")
   });
   state.retailStores.unshift({
     id: remote?.id || uid("store"),
@@ -673,7 +671,7 @@ async function addRetailStore(event) {
   });
   resetForm(event.target);
   saveDatabase();
-  showToast("Retail store added successfully.");
+  showToast(remote ? "Retail store added successfully." : "Retail store saved in app, but Supabase table did not update.");
 }
 
 async function addManufacturer(event) {
@@ -705,8 +703,6 @@ async function addProduct(event) {
     sku: textFrom("productSku"),
     name: textFrom("productName"),
     category: textFrom("productCategory"),
-    default_manufacturer_id: $("productManufacturer").value || null,
-    default_retail_store_id: $("productStore").value || null,
     default_wholesale_price: numberFrom("productWholesale"),
     notes: textFrom("productNotes")
   });
@@ -723,7 +719,7 @@ async function addProduct(event) {
   });
   resetForm(event.target);
   saveDatabase();
-  showToast("Product added successfully.");
+  showToast(remote ? "Product added successfully." : "Product saved in app, but Supabase table did not update.");
 }
 
 function addFactory(event) {
