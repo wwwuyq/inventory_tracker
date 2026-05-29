@@ -59,6 +59,8 @@ See `schema.sql` for a starter Postgres/Supabase schema.
 
 For the current shared-login MVP, paste `supabase-login-state.sql` into Supabase SQL Editor and run it. That creates the shared `app_state` table used by the hosted app.
 
+Paste `supabase-master-tables.sql` into Supabase SQL Editor and run it if you want new retail stores, manufacturers, and products to appear as normal rows in Supabase Table Editor.
+
 ## Supabase keys
 
 The app uses only the public project URL and publishable key in `app.js`.

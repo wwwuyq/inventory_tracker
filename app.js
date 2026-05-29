@@ -76,6 +76,20 @@ async function loadRemoteDatabase() {
   renderAll();
 }
 
+async function insertRemoteRow(table, payload) {
+  if (!isRemoteReady || !supabaseClient || !currentUser) return null;
+  const { data, error } = await supabaseClient
+    .from(table)
+    .insert(payload)
+    .select("id")
+    .single();
+  if (error) {
+    console.warn(`Supabase insert failed for ${table}`, error.message);
+    return null;
+  }
+  return data;
+}
+
 function uid(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
@@ -547,10 +561,17 @@ function saveReviewedRecord(event) {
   saveDatabase();
 }
 
-function addRetailStore(event) {
+async function addRetailStore(event) {
   event.preventDefault();
+  const remote = await insertRemoteRow("retail_stores", {
+    name: textFrom("storeName"),
+    contact_name: textFrom("storeContact"),
+    email: textFrom("storeEmail"),
+    phone: textFrom("storePhone"),
+    shipping_address: textFrom("storeAddress")
+  });
   state.retailStores.unshift({
-    id: uid("store"),
+    id: remote?.id || uid("store"),
     name: textFrom("storeName"),
     contact: textFrom("storeContact"),
     email: textFrom("storeEmail"),
@@ -562,10 +583,17 @@ function addRetailStore(event) {
   saveDatabase();
 }
 
-function addManufacturer(event) {
+async function addManufacturer(event) {
   event.preventDefault();
+  const remote = await insertRemoteRow("manufacturers", {
+    name: textFrom("manufacturerName"),
+    contact_name: textFrom("manufacturerContact"),
+    email: textFrom("manufacturerEmail"),
+    phone: textFrom("manufacturerPhone"),
+    notes: textFrom("manufacturerNotes")
+  });
   state.manufacturers.unshift({
-    id: uid("mfg"),
+    id: remote?.id || uid("mfg"),
     name: textFrom("manufacturerName"),
     contact: textFrom("manufacturerContact"),
     email: textFrom("manufacturerEmail"),
@@ -577,10 +605,19 @@ function addManufacturer(event) {
   saveDatabase();
 }
 
-function addProduct(event) {
+async function addProduct(event) {
   event.preventDefault();
+  const remote = await insertRemoteRow("products", {
+    sku: textFrom("productSku"),
+    name: textFrom("productName"),
+    category: textFrom("productCategory"),
+    default_manufacturer_id: $("productManufacturer").value || null,
+    default_retail_store_id: $("productStore").value || null,
+    default_wholesale_price: numberFrom("productWholesale"),
+    notes: textFrom("productNotes")
+  });
   state.products.unshift({
-    id: uid("product"),
+    id: remote?.id || uid("product"),
     sku: textFrom("productSku"),
     name: textFrom("productName"),
     category: textFrom("productCategory"),
