@@ -19,6 +19,7 @@ let supabaseClient = null;
 let currentUser = null;
 let isRemoteReady = false;
 let toastTimer = null;
+let lastRemoteError = "";
 
 const $ = (id) => document.getElementById(id);
 const money = (value) => Number(value || 0).toLocaleString(undefined, {
@@ -97,17 +98,25 @@ async function loadRemoteDatabase() {
 }
 
 async function insertRemoteRow(table, payload) {
+  lastRemoteError = "";
   if (!isRemoteReady || !supabaseClient || !currentUser) return null;
-  const { data, error } = await supabaseClient
-    .from(table)
-    .insert(payload)
-    .select("id")
-    .single();
-  if (error) {
-    console.warn(`Supabase insert failed for ${table}`, error.message);
+  try {
+    const { data, error } = await supabaseClient
+      .from(table)
+      .insert(payload)
+      .select("id")
+      .single();
+    if (error) {
+      lastRemoteError = error.message;
+      console.warn(`Supabase insert failed for ${table}`, error.message);
+      return null;
+    }
+    return data;
+  } catch (error) {
+    lastRemoteError = error.message || "Unknown Supabase error";
+    console.warn(`Supabase insert failed for ${table}`, lastRemoteError);
     return null;
   }
-  return data;
 }
 
 function uid(prefix) {
@@ -699,15 +708,8 @@ async function addManufacturer(event) {
 
 async function addProduct(event) {
   event.preventDefault();
-  const remote = await insertRemoteRow("products", {
-    sku: textFrom("productSku"),
-    name: textFrom("productName"),
-    category: textFrom("productCategory"),
-    default_wholesale_price: numberFrom("productWholesale"),
-    notes: textFrom("productNotes")
-  });
-  state.products.unshift({
-    id: remote?.id || uid("product"),
+  const product = {
+    id: uid("product"),
     sku: textFrom("productSku"),
     name: textFrom("productName"),
     category: textFrom("productCategory"),
@@ -716,10 +718,26 @@ async function addProduct(event) {
     wholesalePrice: numberFrom("productWholesale"),
     notes: textFrom("productNotes"),
     createdAt: today()
-  });
+  };
+  state.products.unshift(product);
   resetForm(event.target);
   saveDatabase();
-  showToast(remote ? "Product added successfully." : "Product saved in app, but Supabase table did not update.");
+  showToast("Product saved in app.");
+
+  const remote = await insertRemoteRow("products", {
+    sku: product.sku,
+    name: product.name,
+    category: product.category,
+    default_wholesale_price: product.wholesalePrice,
+    notes: product.notes
+  });
+  if (remote?.id) {
+    product.id = remote.id;
+    saveDatabase();
+    showToast("Product added successfully.");
+  } else {
+    showToast(`Product saved in app, but Supabase table did not update${lastRemoteError ? `: ${lastRemoteError}` : "."}`);
+  }
 }
 
 function addFactory(event) {
