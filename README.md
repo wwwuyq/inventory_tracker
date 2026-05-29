@@ -20,7 +20,7 @@ Open `index.html` in a browser. The MVP stores records in browser `localStorage`
 - Invoice tab for checking whether each PO has been invoiced and when.
 - Retail store setup includes a monthly sale-data reminder note for first-day-of-month follow-up.
 - Document intake for pasted text and text files, with field extraction for SKU, quantity, price, PO/invoice, tracking, date, and partner.
-- PDF/image uploads are logged as documents that need OCR. Production OCR should run server-side.
+- PDF/image uploads are sent to a private server endpoint for OpenAI extraction, then reviewed before saving.
 
 ## Production recommendation
 
@@ -68,3 +68,13 @@ Paste `supabase-master-tables.sql` into Supabase SQL Editor and run it if you wa
 The app uses only the public project URL and publishable key in `app.js`.
 
 Never put the Supabase `secret` key or `service_role` JWT in frontend files, Vercel public environment variables, GitHub, or chat. Rotate those keys in Supabase if they were exposed.
+
+## OpenAI extraction
+
+Set this private environment variable in Vercel:
+
+```text
+OPENAI_API_KEY=your OpenAI secret key
+```
+
+Do not put the OpenAI key in `index.html`, `app.js`, GitHub, or any browser-visible file. The app calls `/api/extract`, and that server endpoint calls OpenAI privately.

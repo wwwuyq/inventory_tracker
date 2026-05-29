@@ -595,7 +595,7 @@ async function handleImport(event) {
       name: file.name,
       kind,
       size: file.size,
-      status: canReadText ? "extracted" : "needs OCR",
+      status: canReadText ? "ready for AI" : "ready for AI",
       summary,
       createdAt: new Date().toLocaleString()
     });
@@ -605,20 +605,44 @@ async function handleImport(event) {
   const source = `${rawText}\n${fileText}`.trim();
   if (!source && files.length === 0) return;
 
-  if (source) {
-    const draft = extractFields(source);
-    $("extractSku").value = draft.sku;
-    $("extractQty").value = draft.quantity;
-    $("extractPrice").value = draft.price;
-    $("extractReference").value = draft.reference;
-    $("extractTracking").value = draft.tracking;
-    $("extractDate").value = draft.date;
-    $("extractPartner").value = draft.partner;
-    $("extractNotes").value = draft.notes;
-    $("reviewForm").classList.remove("hidden");
-  }
+  const draft = await extractDocumentWithAI(files, source);
+  applyExtractionDraft(draft);
 
   saveDatabase();
+}
+
+async function extractDocumentWithAI(files, text) {
+  const formData = new FormData();
+  if (text) formData.append("text", text);
+  files.forEach((file) => formData.append("files", file));
+
+  try {
+    showToast("Reading document with AI...");
+    const response = await fetch("/api/extract", {
+      method: "POST",
+      body: formData
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(data?.error || "AI extraction failed.");
+    showToast("AI extraction ready for review.");
+    return data.review;
+  } catch (error) {
+    showToast(`AI extraction unavailable. Used local scan instead.`);
+    return extractFields(text || "");
+  }
+}
+
+function applyExtractionDraft(draft) {
+  $("extractType").value = draft.type || "manufacturing";
+  $("extractSku").value = draft.sku || "";
+  $("extractQty").value = draft.quantity || "";
+  $("extractPrice").value = draft.price || "";
+  $("extractReference").value = draft.reference || "";
+  $("extractTracking").value = draft.tracking || "";
+  $("extractDate").value = draft.date || today();
+  $("extractPartner").value = draft.partner || "";
+  $("extractNotes").value = draft.notes || "";
+  $("reviewForm").classList.remove("hidden");
 }
 
 function saveReviewedRecord(event) {
