@@ -119,6 +119,42 @@ async function insertRemoteRow(table, payload) {
   }
 }
 
+async function insertRemoteProduct(payload) {
+  lastRemoteError = "";
+  if (!currentUser) return null;
+  try {
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      lastRemoteError = "No active Supabase login session.";
+      return null;
+    }
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/products`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLIC_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      lastRemoteError = body?.message || body?.hint || `HTTP ${response.status}`;
+      console.warn("Supabase product REST insert failed", body || lastRemoteError);
+      return null;
+    }
+    return Array.isArray(body) ? body[0] : body;
+  } catch (error) {
+    lastRemoteError = error.message || "Unknown Supabase REST error";
+    console.warn("Supabase product REST insert failed", lastRemoteError);
+    return null;
+  }
+}
+
 function uid(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
@@ -724,7 +760,7 @@ async function addProduct(event) {
   saveDatabase();
   showToast("Product saved in app.");
 
-  const remote = await insertRemoteRow("products", {
+  const remote = await insertRemoteProduct({
     sku: product.sku,
     name: product.name,
     category: product.category,
