@@ -146,3 +146,28 @@ create index idx_shipment_items_sku on shipment_items(sku);
 create index idx_inventory_movements_sku on inventory_movements(sku);
 create index idx_retail_po_items_sku on retail_purchase_order_items(sku);
 create index idx_documents_ocr_status on documents(ocr_status);
+
+create table app_state (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  updated_by uuid references auth.users(id),
+  updated_at timestamptz not null default now()
+);
+
+alter table app_state enable row level security;
+
+create policy "Authenticated staff can read shared app state"
+on app_state for select
+to authenticated
+using (true);
+
+create policy "Authenticated staff can insert shared app state"
+on app_state for insert
+to authenticated
+with check (true);
+
+create policy "Authenticated staff can update shared app state"
+on app_state for update
+to authenticated
+using (true)
+with check (true);

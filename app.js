@@ -1,4 +1,7 @@
 const STORAGE_KEY = "lili_ops_database_v1";
+const SUPABASE_URL = "https://bqlojvhbhbhsoihcrqmt.supabase.co";
+const SUPABASE_PUBLIC_KEY = "sb_publishable_COGo8rAXor8EU_a5AcIjmA_Ckrz0xsw";
+const SHARED_DATABASE_ID = "main";
 
 const emptyDatabase = {
   retailStores: [],
@@ -12,6 +15,9 @@ const emptyDatabase = {
 };
 
 const state = loadDatabase();
+let supabaseClient = null;
+let currentUser = null;
+let isRemoteReady = false;
 
 const $ = (id) => document.getElementById(id);
 const money = (value) => Number(value || 0).toLocaleString(undefined, {
@@ -31,6 +37,42 @@ function loadDatabase() {
 
 function saveDatabase() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  renderAll();
+  saveRemoteDatabase();
+}
+
+async function saveRemoteDatabase() {
+  if (!isRemoteReady || !supabaseClient || !currentUser) return;
+  const { error } = await supabaseClient
+    .from("app_state")
+    .upsert({
+      id: SHARED_DATABASE_ID,
+      data: state,
+      updated_by: currentUser.id,
+      updated_at: new Date().toISOString()
+    });
+  if (error) console.warn("Supabase save failed", error.message);
+}
+
+async function loadRemoteDatabase() {
+  if (!supabaseClient || !currentUser) return;
+  const { data, error } = await supabaseClient
+    .from("app_state")
+    .select("data")
+    .eq("id", SHARED_DATABASE_ID)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Supabase load failed", error.message);
+    return;
+  }
+
+  if (data?.data) {
+    Object.assign(state, { ...emptyDatabase, ...data.data });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } else {
+    await saveRemoteDatabase();
+  }
   renderAll();
 }
 
@@ -307,6 +349,52 @@ function renderAll() {
   renderInventorySummary();
   renderRecords();
   renderDocuments();
+}
+
+function setAuthUi(session) {
+  currentUser = session?.user || null;
+  document.body.classList.toggle("auth-locked", !currentUser);
+  $("authError").textContent = "";
+}
+
+async function initializeSupabase() {
+  document.body.classList.add("auth-locked");
+  if (!window.supabase?.createClient) {
+    $("authError").textContent = "Supabase library did not load. Check your internet connection.";
+    return;
+  }
+
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
+  const { data } = await supabaseClient.auth.getSession();
+  setAuthUi(data.session);
+
+  if (currentUser) {
+    isRemoteReady = true;
+    await loadRemoteDatabase();
+  } else {
+    renderAll();
+  }
+
+  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    setAuthUi(session);
+    isRemoteReady = Boolean(session?.user);
+    if (session?.user) await loadRemoteDatabase();
+  });
+}
+
+async function signIn(event) {
+  event.preventDefault();
+  $("authError").textContent = "";
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email: textFrom("loginEmail"),
+    password: textFrom("loginPassword")
+  });
+  if (error) $("authError").textContent = error.message;
+}
+
+async function signOut() {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
 }
 
 function escapeHtml(value) {
@@ -733,6 +821,8 @@ function wireEvents() {
   $("importForm").addEventListener("submit", handleImport);
   $("reviewForm").addEventListener("submit", saveReviewedRecord);
   $("exportData").addEventListener("click", exportData);
+  $("loginForm").addEventListener("submit", signIn);
+  $("signOutButton").addEventListener("click", signOut);
   $("factorySku").addEventListener("change", () => fillDefaultsFromProduct(textFrom("factorySku"), { manufacturer: "factoryName" }));
   $("poSku").addEventListener("change", () => fillDefaultsFromProduct(textFrom("poSku"), { store: "poCustomer", price: "poInvoiceAmount" }));
   document.querySelector("[data-action='seed']").addEventListener("click", seedData);
@@ -744,7 +834,7 @@ function wireEvents() {
 }
 
 wireEvents();
-renderAll();
+initializeSupabase();
   $("storeForm").addEventListener("submit", addRetailStore);
   $("manufacturerForm").addEventListener("submit", addManufacturer);
   $("productForm").addEventListener("submit", addProduct);

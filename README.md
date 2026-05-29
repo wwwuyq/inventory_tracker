@@ -8,6 +8,8 @@ Open `index.html` in a browser. The MVP stores records in browser `localStorage`
 
 ## Current MVP
 
+- Supabase email/password login for staff.
+- Shared Supabase/Postgres `app_state` record so phone, laptop, and staff accounts see the same operations database.
 - Mobile-first dashboard for factory balances, inbound quantity, open PO quantity, and stock.
 - Master database setup for retail stores, manufacturers, and products.
 - Product records can be linked to a default manufacturer and retail store.
@@ -54,3 +56,11 @@ Suggested domain setup:
 The browser app intentionally keeps the same concepts so the data can be migrated later.
 
 See `schema.sql` for a starter Postgres/Supabase schema.
+
+For the current shared-login MVP, paste `supabase-login-state.sql` into Supabase SQL Editor and run it. That creates the shared `app_state` table used by the hosted app.
+
+## Supabase keys
+
+The app uses only the public project URL and publishable key in `app.js`.
+
+Never put the Supabase `secret` key or `service_role` JWT in frontend files, Vercel public environment variables, GitHub, or chat. Rotate those keys in Supabase if they were exposed.
